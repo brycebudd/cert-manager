@@ -1,0 +1,12 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: app-tls-cert
+  namespace: default
+spec:
+  secretName: app-tls-secret
+  issuerRef:
+    name: cluster-a-issuer
+    kind: ClusterIssuer
+  dnsNames:
+    - myapp.example.com
