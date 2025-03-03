@@ -1,7 +1,9 @@
 # Makefile to create a kind cluster with Istio
 SHELL := /bin/bash
 
-CLUSTER_NAME := wf-dti
+CLUSTER_NAME = ap-cluster
+LOWER_CLUSTER_NAME = $(shell echo "${CLUSTER_NAME}" | tr '[:upper:]' '[:lower:]')
+UPPER_CLUSTER_NAME = $(shell echo "${CLUSTER_NAME}" | tr '[:lower:]' '[:upper:]')
 
 .PHONY: all start-cloud-provider-kind cluster istio verify clean
 
@@ -26,7 +28,7 @@ cluster: install-cloud-provider-kind
 		curl -L https://istio.io/downloadIstio | ISTIO_VERSION=latest sh -; \
 		sudo mv istio-*/bin/istioctl /usr/local/bin/; \
 	)
-	@kind create cluster --name $(CLUSTER_NAME) --config=kind/config.yaml
+	@kind create cluster --name ${CLUSTER_NAME} --config=kind/config.yaml
 	@kubectl wait --for=condition=Ready nodes --all --timeout=120s
 
 istio:
@@ -40,7 +42,7 @@ verify:
 
 clean:
 	@echo "Deleting Kind cluster..."
-	@kind delete cluster --name $(CLUSTER_NAME)
+	@kind delete cluster --name ${CLUSTER_NAME}
 
 gen-root-cert:
 	@echo "create root certificate..."
@@ -55,9 +57,10 @@ gen-intermediate-ca-cert: gen-root-cert
 	@openssl req -new -key ./certs/intermediate-ca.key -out ./certs/intermediate-ca.csr -subj "/C=US/ST=California/L=San Francisco/O=Wells Fargo/OU=Digital Solutions/CN=IntermediateCA"
 	@openssl x509 -req -in ./certs/intermediate-ca.csr -CA ./certs/root-ca.crt -CAkey ./certs/root-ca.key -CAcreateserial -out ./certs/intermediate-ca.crt -days 1825 -sha256 -extfile <(printf "basicConstraints=CA:TRUE")
 
-gen-clusterA-intermediate-ca-cert: gen-intermediate-ca-cert
-	@echo "create cluster A intermediate cert..."
+gen-cluster-intermediate-ca-cert:
+	@echo "create ${CLUSTER_NAME} intermediate cert..."
 	@mkdir -p ./certs
-	@openssl genrsa -out ./certs/clusterA-intermediate-ca.key 4096
-	@openssl req -new -key ./certs/clusterA-intermediate-ca.key -out ./certs/clusterA-intermediate-ca.csr -subj "/C=US/ST=California/L=San Francisco/O=Wells Fargo/OU=Digital Solutions/CN=ClusterA-Intermediate-CA"
-	@openssl x509 -req -in ./certs/clusterA-intermediate-ca.csr -CA ./certs/intermediate-ca.crt -CAkey ./certs/intermediate-ca.key -CAcreateserial -out ./certs/clusterA-intermediate-ca.crt -days 1095 -sha256 -extfile <(printf "basicConstraints=CA:TRUE")
+	@openssl genrsa -out ./certs/${LOWER_CLUSTER_NAME}-intermediate-ca.key 4096
+	@openssl req -new -key ./certs/${LOWER_CLUSTER_NAME}-intermediate-ca.key -out ./certs/${LOWER_CLUSTER_NAME}-intermediate-ca.csr -subj "/C=US/ST=California/L=San Francisco/O=Wells Fargo/OU=Digital Solutions/CN=${UPPER_CLUSTER_NAME}-Intermediate-CA"
+	@openssl x509 -req -in ./certs/${LOWER_CLUSTER_NAME}-intermediate-ca.csr -CA ./certs/intermediate-ca.crt -CAkey ./certs/intermediate-ca.key -CAcreateserial -out ./certs/${LOWER_CLUSTER_NAME}-intermediate-ca.crt -days 1095 -sha256 -extfile <(printf "basicConstraints=CA:TRUE")
+
