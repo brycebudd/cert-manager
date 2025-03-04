@@ -191,70 +191,157 @@ vault write cluster-b-pki/roles/nonprod \
     allow_subdomains=true \
     max_ttl="72h"
 ```
+### Setup Vault Policy for Cluster Workloads
+
+Create a named policy that enables read access to the PKI secrets engine paths.
+
+```bash
+vault policy write cluster-a-pki - <<EOF
+path "cluster-a-pki*"                { capabilities = ["read", "list"] }
+path "cluster-a-pki/sign/nonprod"    { capabilities = ["create", "update"] }
+path "cluster-a-pki/issue/nonprod"   { capabilities = ["create"] }
+EOF
+
+vault policy write cluster-b-pki - <<EOF
+path "cluster-b-pki*"                { capabilities = ["read", "list"] }
+path "cluster-b-pki/sign/nonprod"    { capabilities = ["create", "update"] }
+path "cluster-b-pki/issue/nonprod"   { capabilities = ["create"] }
+EOF
+```
+### Enable Kubernetes Auth
+```bash
+vault auth enable --path=cluster-a kubernetes
+
+vault write auth/cluster-a/config \
+    token_reviewer_jwt="$(cat clustera-jwt-token)" \
+    kubernetes_host=https://127.0.0.1:33139 \
+    kubernetes_ca_cert="$(cat clustera-ca.crt)" \
+    issuer="https://kubernetes.default.svc.cluster.local"
+```
+
+### Create a Vault Issuer Role
+
+Create an Issuer Role for each Cluster Issuer
+
+```bash
+vault write auth/cluster-a/role/cluster-a-issuer \
+    bound_service_account_names=cluster-a-issuer \
+    bound_service_account_namespaces='*' \
+    policies=cluster-a-pki \
+    ttl=24h
+```
+
+```bash
+vault write auth/cluster-b/role/cluster-b-issuer \
+    bound_service_account_names=cluster-b-issuer \
+    bound_service_account_namespaces='*' \
+    policies=cluster-b-pki \
+    ttl=24h
+```
+
+
 ## Create Cluster A
 
 ```bash
 make CLUSTER_NAME=cluster-a cluster
 ```
 
-## Setup and Configure Cert-Manager for Cluster A
+## Install Cert-Manager
+
+```bash
+helm repo add jetstack https://charts.jetstack.io --force-update
+
+helm install \
+  cert-manager jetstack/cert-manager \
+  --namespace cert-manager \
+  --create-namespace \
+  --version v1.17.0 \
+  --set crds.enabled=true
+```
 
 ### Create a Service Account for Cert-Manager to Connect to Vault
 
 ```bash
-kubectl create serviceaccount cert-manager-vault --namespace cert-manager
-
+kubectl create serviceaccount cluster-a-issuer --namespace cert-manager
 ```
-*Repeat for each additional cluster.*
-
-# Manual Certificate Managment with Cert-Manager
-
-## Generate Certificates for internals
-```bash
-make gen-intermediate-cert
-make CLUSTER_NAME=cluster-a gen-cluster-intermediate-ca-cert
-make CLUSTER_NAME=cluster-b gen-cluster-intermediate-ca-cert
-make CLUSTER_NAME=vault gen-cluster-intermediate-ca-cert
-```
-
-## Store cluster A Intermediate Cert as a Kubernetes Secret
+### Create a token for Service Account
 
 ```bash
-kubectl create secret tls cluster-a-intermediate-ca \
-  --cert=./certs/internalA-intermediate-ca.crt \
-  --key=./certs/internalA-intermediate-ca.key \
-  --namespace cert-manager
-```
-
-## Create internalIssuer
-
-```yaml
-apiVersion: cert-manager.io/v1
-kind: internalIssuer
+kubectl apply -f -<<EOF
+apiVersion: v1
+kind: Secret
 metadata:
+  name: cluster-a-issuer-token
+  namespace: cert-manager
+  annotations:
+    kubernetes.io/service-account.name: cluster-a-issuer
+type: kubernetes.io/service-account-token
+EOF
+```
+
+### Create a role binding for the Service Account
+
+```bash
+kubectl apply -f -<<EOF
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+   name: role-tokenreview-binding
+   namespace: cert-manager
+roleRef:
+   apiGroup: rbac.authorization.k8s.io
+   kind: ClusterRole
+   name: system:auth-delegator
+subjects:
+- kind: ServiceAccount
   name: cluster-a-issuer
-spec:
-  ca:
-    secretName: cluster-a-intermediate-ca
+  namespace: cert-manager
+EOF
 ```
 
-## Issue Certificate for Workload
+### Retrieve our JWT Token
 
-```yaml
-apiVersion: cert-manager.io/v1
-kind: Certificate
-metadata:
-  name: app-tls-cert
-  namespace: default
-spec:
-  secretName: app-tls-secret
-  issuerRef:
-    name: cluster-a-issuer
-    kind: internalIssuer
-  dnsNames:
-    - myapp.example.com
-
+```bash
+export ISSUER_SECRET_REF=$(kubectl get secrets -n cert-manager --output=json | jq -r '.items[].metadata | select(.name|endswith("issuer-token")).name')
+export CLUSTERA_SA_JWT_TOKEN=$(kubectl -n cert-manager get secret $ISSUER_SECRET_REF --output 'go-template={{ .data.token }}' | base64 --decode)
+echo $CLUSTERA_SA_JWT_TOKEN > clustera-jwt-token
 ```
+
+### Get Cluster Certificate
+
+```bash
+CLUSTERA_KUBE_CA_CERT=$(kubectl config view --raw --minify --flatten --output='jsonpath={.clusters[].cluster.certificate-authority-data}' | base64 --decode)
+echo $CLUSTERA_KUBE_CA_CERT > clustera-ca.crt
+```
+>
+> #TODO THE ABOVE CONFIGS are applied to KUBE AUTH for VAULT BELOW
+>
+### Create Vault Kubernetes Auth for Cluster A
+
+```bash
+vault auth enable --path=cluster-a kubernetes
+```
+
+### Create the Vault Issuer for Certificate Manager
+
+```bash
+kubectl apply -f charts/cluster-a-vault-issuer.yaml
+```
+
+>
+> *Note* The IP Address used in this script works because I changed the vault service on the vault cluster to a LoadBalancer (from ClusterIP) and started cloud-provider-kind so that it gets an external IP which I bound to in this script.
+>
+> Likewise I need to adjust the Kubernetes Authentication for Vault to allow other clusters to communicate with Vault Cluster.
+>
+> kubectl config use-context kind-cluster-a
+> kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}'
+> kubectl config view --raw --minify --flatten -o jsonpath='{.clusters[0].certificate-authority-data}' | base64 --decode
+>
+> set this result as the kube-server for auth in vault.
+>
+> This would need to be properly addressed in production.
+>
 
 # Appendix
 
@@ -266,6 +353,8 @@ spec:
 > [Vault on Kubernetes](https://developer.hashicorp.com/vault/docs/platform/k8s)
 >
 > [Vault Helm Configuration](https://developer.hashicorp.com/vault/docs/platform/k8s/helm/configuration)
+>
+> [Vault for Multiple Kubernetes Clusters](https://computingforgeeks.com/how-to-integrate-multiple-kubernetes-clusters-to-vault-server/)
 >
 > [HA Vault Server with TLS](https://developer.hashicorp.com/vault/tutorials/kubernetes/kubernetes-minikube-tls)
 >

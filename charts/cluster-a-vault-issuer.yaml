@@ -1,0 +1,16 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: cluster-a-vault-issuer
+  namespace: cert-manager
+spec:
+  vault:
+    server: http://127.0.0.1:8200
+    path: cluster-a-pki/sign/nonprod
+    auth:
+      kubernetes:
+        mountPath: /v1/auth/kubernetes
+        role: cluster-a-issuer
+        secretRef:
+          name: cluster-a-issuer-token
+          key: token
