@@ -200,7 +200,6 @@ vault policy write cluster-a-pki - <<EOF
 path "cluster-a-pki/*"                { capabilities = ["read", "list", "create", "update"] }
 path "cluster-a-pki/sign/nonprod"    { capabilities = ["create", "update"] }
 path "cluster-a-pki/issue/nonprod"   { capabilities = ["create"] }
-path "auth/cluster-a/login"          { capabilities = ["read", "list"] }
 EOF
 
 vault policy write cluster-b-pki - <<EOF
@@ -217,28 +216,26 @@ vault write auth/cluster-a/config \
     token_reviewer_jwt="$(kubectl get secret cluster-a-issuer-token -n cert-manager -o jsonpath='{.data.token}' | base64 --decode)" \
     kubernetes_host="$(kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.server}')" \
     kubernetes_ca_cert="$(kubectl get secret cluster-a-issuer-token -n cert-manager -o jsonpath='{.data.ca\.crt}' | base64 --decode)"
+
+# alternative
+
+vault write auth/cluster-a/config \
+    kubernetes_host="$(kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.server}')" \
+    kubernetes_ca_cert="$(kubectl get secret cluster-a-issuer-token -n cert-manager -o jsonpath='{.data.ca\.crt}' | base64 --decode)" \
+    disable_local_ca_jwt=true
 ```
 
 ### Create a Vault Issuer Role
 
-Create an Issuer Role for each Cluster Issuer
+Create an Issuer Role for each Cluster Service Account
 
 ```bash
 vault write auth/cluster-a/role/cluster-a-issuer \
     bound_service_account_names=cluster-a-issuer \
-    bound_service_account_namespaces='*' \
+    bound_service_account_namespaces=* \
     policies=cluster-a-pki \
     ttl=24h
 ```
-
-```bash
-vault write auth/cluster-b/role/cluster-b-issuer \
-    bound_service_account_names=cluster-b-issuer \
-    bound_service_account_namespaces='*' \
-    policies=cluster-b-pki \
-    ttl=24h
-```
-
 
 ## Create Cluster A
 
