@@ -372,3 +372,5 @@ kubectl apply -f charts/cluster-a-vault-issuer.yaml
 >
 > [Build your own Certificate Authority with Vault](https://developer.hashicorp.com/vault/tutorials/pki/pki-engine)
 >
+> [Multi-Cluster Kubernetes with Cert Manager Vault and Istio](https://medium.com/@espinaladrinaldi/istio-multicluster-with-istio-csr-cert-manager-vault-pki-66c2d58f1c7f)
+>
