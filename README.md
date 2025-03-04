@@ -370,3 +370,5 @@ kubectl apply -f charts/cluster-a-vault-issuer.yaml
 >
 > [Helpful Support Request for Certifiate Rotation](https://github.com/hashicorp/vault/issues/16461)
 >
+> [Build your own Certificate Authority with Vault](https://developer.hashicorp.com/vault/tutorials/pki/pki-engine)
+>
