@@ -5,11 +5,11 @@ metadata:
   namespace: cert-manager
 spec:
   vault:
-    server: http://127.0.0.1:8200
+    server: http://172.18.0.12:8200
     path: cluster-a-pki/sign/nonprod
     auth:
       kubernetes:
-        mountPath: /v1/auth/kubernetes
+        mountPath: /v1/auth/cluster-a
         role: cluster-a-issuer
         secretRef:
           name: cluster-a-issuer-token
