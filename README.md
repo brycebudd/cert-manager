@@ -197,13 +197,14 @@ Create a named policy that enables read access to the PKI secrets engine paths.
 
 ```bash
 vault policy write cluster-a-pki - <<EOF
-path "cluster-a-pki*"                { capabilities = ["read", "list"] }
+path "cluster-a-pki/*"                { capabilities = ["read", "list", "create", "update"] }
 path "cluster-a-pki/sign/nonprod"    { capabilities = ["create", "update"] }
 path "cluster-a-pki/issue/nonprod"   { capabilities = ["create"] }
+path "auth/cluster-a/login"          { capabilities = ["read", "list"] }
 EOF
 
 vault policy write cluster-b-pki - <<EOF
-path "cluster-b-pki*"                { capabilities = ["read", "list"] }
+path "cluster-b-pki/*"                { capabilities = ["read", "list"] }
 path "cluster-b-pki/sign/nonprod"    { capabilities = ["create", "update"] }
 path "cluster-b-pki/issue/nonprod"   { capabilities = ["create"] }
 EOF
@@ -213,10 +214,9 @@ EOF
 vault auth enable --path=cluster-a kubernetes
 
 vault write auth/cluster-a/config \
-    token_reviewer_jwt="$(cat clustera-jwt-token)" \
-    kubernetes_host=https://127.0.0.1:33139 \
-    kubernetes_ca_cert="$(cat clustera-ca.crt)" \
-    issuer="https://kubernetes.default.svc.cluster.local"
+    token_reviewer_jwt="$(kubectl get secret cluster-a-issuer-token -n cert-manager -o jsonpath='{.data.token}' | base64 --decode)" \
+    kubernetes_host="$(kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.server}')" \
+    kubernetes_ca_cert="$(kubectl get secret cluster-a-issuer-token -n cert-manager -o jsonpath='{.data.ca\.crt}' | base64 --decode)"
 ```
 
 ### Create a Vault Issuer Role
