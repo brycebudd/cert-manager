@@ -1,6 +1,6 @@
 /certs
-.crt
-.csr
-.srl
-.key
-.pem
+*.crt
+*.csr
+*.srl
+*.key
+*.pem
