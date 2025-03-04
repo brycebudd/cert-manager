@@ -276,6 +276,40 @@ type: kubernetes.io/service-account-token
 EOF
 ```
 
+#### Alternative: Create an opaque token for Vault
+
+```bash
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+type: Opaque
+metadata:
+  name: cert-manager-vault-token
+  namespace: cert-manager
+data:
+  token: cm9vdAo=
+EOF
+```
+Then define the Issuer like so
+
+```bash
+kubectl apply -f - <<EOF
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: vault
+  namespace: cert-manager
+spec:
+  vault:
+    server: http://172.18.0.7:8200
+    path: cluster-a-pki/sign/nonprod
+    auth:
+      tokenSecretRef:
+          name: cert-manager-vault-token
+          key: token
+EOF
+```
+
 ### Create a role binding for the Service Account
 
 ```bash
