@@ -12,5 +12,5 @@ spec:
         mountPath: /v1/auth/cluster-a
         role: cluster-a-issuer
         secretRef:
-          name: cluster-a-issuer-token
+          name: cluster-a-issuer-sa-secret
           key: token
