@@ -6,7 +6,7 @@ metadata:
 spec:
   vault:
     server: http://172.18.0.7:8200
-    path: cluster-a-pki/sign/nonprod
+    path: pki_cluster-a/sign/nonprod
     auth:
       kubernetes:
         mountPath: /v1/auth/cluster-a

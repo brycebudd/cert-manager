@@ -95,30 +95,19 @@ vault secrets tune -max-lease-ttl=43800h pki_int
 ### Generate Intermediate CA Signing Request
 
 ```bash
-vault write pki_int/intermediate/generate/internal \
-    common_name="IntermediateCA" \
-    ttl=43800h
-
-# OR
-
 vault write -format=json pki_int/intermediate/generate/internal \
      common_name="IntermediateCA" \
+     ttl=43800h \
      | jq -r '.data.csr' > pki_int.csr
 ```
 
 ### Sign the Intermediate CA with the Root Certificate
 
 ```bash
-vault write pki/root/sign-intermediate \
-    csr=@pki_int.csr \
-    format=pem_bundle \
-    ttl=43800h
-
-# OR
-
 vault write -format=json pki/root/sign-intermediate \
      csr=@pki_int.csr \
-     format=pem_bundle ttl="43800h" \
+     format=pem_bundle \
+     ttl=43800h \
      | jq -r '.data.certificate' > intermediate.pem    
 ```
 
@@ -132,19 +121,19 @@ vault write pki_int/intermediate/set-signed \
 ## Create the cluster Specific Intermediate CAs
 
 ```bash
-vault secrets enable -path=cluster-a-pki pki
-vault secrets enable -path=cluster-b-pki pki
+vault secrets enable -path=pki_cluster-a pki
+vault secrets enable -path=pki_cluster-b pki
 ```
 
 ### Generate the Certificate Signing Request for each cluster
 
 ```bash
-vault write -format=json cluster-a-pki/intermediate/generate/internal \
+vault write -format=json pki_cluster-a/intermediate/generate/internal \
     common_name="Cluster-A Intermediate CA" \
     ttl=21900h \
     | jq -r '.data.csr' > cluster-a.csr
 
-vault write -format=json cluster-b-pki/intermediate/generate/internal \
+vault write -format=json pki_cluster-b/intermediate/generate/internal \
     common_name="Cluster-B Intermediate CA" \
     ttl=21900h \
     | jq -r '.data.csr' > cluster-b.csr    
@@ -169,10 +158,10 @@ vault write -format=json pki_int/root/sign-intermediate \
 ### Import cluster-Specific Intermediate CA Certificates
 
 ```bash
-vault write cluster-a-pki/intermediate/set-signed \
+vault write pki_cluster-a/intermediate/set-signed \
     certificate=@cluster-a-intermediate.pem
 
-vault write cluster-b-pki/intermediate/set-signed \
+vault write pki_cluster-b/intermediate/set-signed \
     certificate=@cluster-b-intermediate.pem
 ```
 
@@ -181,12 +170,12 @@ vault write cluster-b-pki/intermediate/set-signed \
 ### Setup Certificate Roles for Workloads
 
 ```bash
-vault write cluster-a-pki/roles/nonprod \
+vault write pki_cluster-a/roles/nonprod \
     allowed_domains="bank.net" \
     allow_subdomains=true \
     max_ttl="72h"
 
-vault write cluster-b-pki/roles/nonprod \
+vault write pki_cluster-b/roles/nonprod \
     allowed_domains="bank.net" \
     allow_subdomains=true \
     max_ttl="72h"
@@ -196,16 +185,16 @@ vault write cluster-b-pki/roles/nonprod \
 Create a named policy that enables read access to the PKI secrets engine paths.
 
 ```bash
-vault policy write cluster-a-pki - <<EOF
-path "cluster-a-pki/*"                { capabilities = ["read", "list", "create", "update"] }
-path "cluster-a-pki/sign/nonprod"    { capabilities = ["create", "update"] }
-path "cluster-a-pki/issue/nonprod"   { capabilities = ["create"] }
+vault policy write pki_cluster-a - <<EOF
+path "pki_cluster-a/*"               { capabilities = ["read", "list", "create", "update"] }
+path "pki_cluster-a/sign/nonprod"    { capabilities = ["create", "update"] }
+path "pki_cluster-a/issue/nonprod"   { capabilities = ["create"] }
 EOF
 
-vault policy write cluster-b-pki - <<EOF
-path "cluster-b-pki/*"                { capabilities = ["read", "list"] }
-path "cluster-b-pki/sign/nonprod"    { capabilities = ["create", "update"] }
-path "cluster-b-pki/issue/nonprod"   { capabilities = ["create"] }
+vault policy write pki_cluster-b - <<EOF
+path "pki_cluster-b/*"               { capabilities = ["read", "list"] }
+path "pki_cluster-b/sign/nonprod"    { capabilities = ["create", "update"] }
+path "pki_cluster-b/issue/nonprod"   { capabilities = ["create"] }
 EOF
 ```
 ### Enable Kubernetes Auth
@@ -213,15 +202,15 @@ EOF
 vault auth enable --path=cluster-a kubernetes
 
 vault write auth/cluster-a/config \
-    token_reviewer_jwt="$(kubectl get secret cluster-a-issuer-token -n cert-manager -o jsonpath='{.data.token}' | base64 --decode)" \
+    token_reviewer_jwt="$(kubectl get secret vault-auth-secret -n cert-manager -o jsonpath='{.data.token}' | base64 --decode)" \
     kubernetes_host="$(kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.server}')" \
-    kubernetes_ca_cert="$(kubectl get secret cluster-a-issuer-token -n cert-manager -o jsonpath='{.data.ca\.crt}' | base64 --decode)"
+    kubernetes_ca_cert="$(kubectl get secret vault-auth-secret -n cert-manager -o jsonpath='{.data.ca\.crt}' | base64 --decode)"
 
-# alternative
+# alternative no token reviewer (didn't work either)
 
 vault write auth/cluster-a/config \
     kubernetes_host="$(kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.server}')" \
-    kubernetes_ca_cert="$(kubectl get secret cluster-a-issuer-token -n cert-manager -o jsonpath='{.data.ca\.crt}' | base64 --decode)" \
+    kubernetes_ca_cert="$(kubectl get secret vault-auth-secret -n cert-manager -o jsonpath='{.data.ca\.crt}' | base64 --decode)" \
     disable_local_ca_jwt=true
 ```
 
@@ -230,10 +219,10 @@ vault write auth/cluster-a/config \
 Create an Issuer Role for each Cluster Service Account
 
 ```bash
-vault write auth/cluster-a/role/cluster-a-issuer \
-    bound_service_account_names=cluster-a-issuer \
+vault write auth/cluster-a/role/cert-manager \
+    bound_service_account_names=vault-auth-sa \
     bound_service_account_namespaces=* \
-    policies=default,cluster-a-pki \
+    policies=pki_cluster-a \
     ttl=24h
 ```
 
@@ -308,7 +297,7 @@ metadata:
 spec:
   vault:
     server: http://172.18.0.7:8200
-    path: cluster-a-pki/sign/nonprod
+    path: pki_cluster-a/sign/nonprod
     auth:
       tokenSecretRef:
           name: cert-manager-vault-token
@@ -364,7 +353,7 @@ kubectl get certificaterequests
 ### Create a new cluster-a vault pki role
 
 ```bash
-vault write cluster-a-pki/roles/istio-ca \
+vault write pki_cluster-a/roles/istio-ca \
     allowed_domains=bank.net \
     allow_any_name=true  \
     enforce_hostnames=false \
@@ -482,7 +471,7 @@ kubectl apply -f -<<EOF
 apiVersion: v1
 kind: Secret
 metadata:
-  name: cluster-a-issuer-token
+  name: vault-auth-secret
   namespace: cert-manager
   annotations:
     kubernetes.io/service-account.name: cluster-a-issuer

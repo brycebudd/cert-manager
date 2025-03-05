@@ -6,7 +6,7 @@ metadata:
 spec:
   vault:
     server: http://172.18.0.7:8200
-    path: cluster-a-pki/sign/istio-ca
+    path: pki_cluster-a/sign/istio-ca
     auth:
       tokenSecretRef:
           name: cert-manager-vault-token
