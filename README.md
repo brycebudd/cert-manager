@@ -381,7 +381,7 @@ Pull Values from [https://github.com/istio/istio/blob/1.20.0/manifests/charts/is
 helm upgrade --install istiod --values charts/istio-discovery-values.yaml -n istio-system istio/istiod
 ```
 
-Verify Installation Succeeded
+### Verify Istio Certificate Issuance
 
 ```bash
 # should report ready=true
@@ -391,7 +391,44 @@ kubectl get certificate istiod -n istio-system
 kubectl describe certificate istiod -n istio-system
 ```
 
-TODO: Create Istio Gateway and Virtual Service over some pods that talk
+### Validating Workloads Get Istio Certificates from Vault
+Retrieve a sample application from Istio and test!
+
+```bash
+export NAMESPACE=test
+export APP=httpbin
+export ISTIO_VERSION=$(istioctl version -o json | jq -r '.meshVersion[0].Info.version')
+ISTIO_VERSION=release-1.25
+```
+
+create and label the namespace for istio-injection
+```bash
+kubectl create namespace $NAMESPACE
+kubectl label namespace $NAMESPACE istio-injection=enabled --overwrite
+```
+In a separate terminal you should now follow the logs for cert-manager:
+
+```bash
+kubectl logs -n cert-manager $(kubectl get pods -n cert-manager -o jsonpath='{.items..metadata.name}' --selector app=cert-manager) --since 2m -f
+```
+
+In another separate terminal, lets watch the istio-system namespace for certificaterequests:
+
+```bash
+kubectl get certificaterequests.cert-manager.io -n istio-system -w
+```
+
+deploy test the application
+
+```bash
+kubectl apply -n $NAMESPACE -f https://raw.githubusercontent.com/istio/istio/$ISTIO_VERSION/samples/httpbin/httpbin.yaml
+```
+
+inspect envoy proxy 
+```bash
+kubectl logs $(kubectl get pod -n $NAMESPACE -o jsonpath="{.items...metadata.name}" --selector app=$APP) -c istio-proxy -n $NAMESPACE
+```
+
 
 ## Read a Vault Secret from Kubernetes Pod
 
