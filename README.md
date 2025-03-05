@@ -233,7 +233,7 @@ Create an Issuer Role for each Cluster Service Account
 vault write auth/cluster-a/role/cluster-a-issuer \
     bound_service_account_names=cluster-a-issuer \
     bound_service_account_namespaces=* \
-    policies=cluster-a-pki \
+    policies=default,cluster-a-pki \
     ttl=24h
 ```
 
@@ -270,6 +270,33 @@ data:
   token: cm9vdAo=
 EOF
 ```
+Optional: Define Service and Endpoints for External Vault...it didn't work, but here for notes. Neat idea tho
+
+```bash
+cat > charts/external-vault.yaml <<EOF
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: external-vault
+  namespace: default
+spec:
+  ports:
+  - protocol: TCP
+    port: 8200
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: external-vault
+subsets:
+  - addresses:
+      - ip: '172.18.0.7'
+    ports:
+      - port: 8200
+EOF
+```
+
 Then define the Issuer like so
 
 ```bash
@@ -527,4 +554,7 @@ kubectl apply -f charts/cluster-a-vault-issuer.yaml
 > [Build your own Certificate Authority with Vault](https://developer.hashicorp.com/vault/tutorials/pki/pki-engine)
 >
 > [Multi-Cluster Kubernetes with Cert Manager Vault and Istio](https://medium.com/@espinaladrinaldi/istio-multicluster-with-istio-csr-cert-manager-vault-pki-66c2d58f1c7f)
+>
+> [Configuring Kubernetes for Secrets with Vault](https://developer.hashicorp.com/vault/tutorials/kubernetes/agent-kubernetes)
+>
 >
