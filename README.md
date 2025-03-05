@@ -256,27 +256,7 @@ helm install \
   --set crds.enabled=true
 ```
 
-### Create a Service Account for Cert-Manager to Connect to Vault
-
-```bash
-kubectl create serviceaccount cluster-a-issuer --namespace cert-manager
-```
-### Create a token for Service Account
-
-```bash
-kubectl apply -f -<<EOF
-apiVersion: v1
-kind: Secret
-metadata:
-  name: cluster-a-issuer-token
-  namespace: cert-manager
-  annotations:
-    kubernetes.io/service-account.name: cluster-a-issuer
-type: kubernetes.io/service-account-token
-EOF
-```
-
-#### Alternative: Create an opaque token for Vault
+### Create an opaque token for Vault
 
 ```bash
 kubectl apply -f - <<EOF
@@ -295,10 +275,9 @@ Then define the Issuer like so
 ```bash
 kubectl apply -f - <<EOF
 apiVersion: cert-manager.io/v1
-kind: Issuer
+kind: ClusterIssuer
 metadata:
-  name: vault
-  namespace: cert-manager
+  name: vault-issuer
 spec:
   vault:
     server: http://172.18.0.7:8200
@@ -309,8 +288,144 @@ spec:
           key: token
 EOF
 ```
+This works but is insecure because it uses the root token to access.
 
-### Create a role binding for the Service Account
+# Cert-Manager Usage
+Now that we have our Vault Issuer in place we can use cert-manager to issue certificates in various ways. 
+
+> **Info**
+> cert-manager will store certificates it issues as a kubernetes secret by default.
+>
+
+## Cert-Manager CSI-Driver
+
+### Installation
+
+```bash
+helm repo add jetstack https://charts.jetstack.io --force-update
+helm upgrade cert-manager-csi-driver jetstack/cert-manager-csi-driver \
+  --install \
+  --namespace cert-manager \
+  --wait
+```
+
+### Usage
+Add a cert-manager enabled volume to your pod. This example will use our newly minted vault issuer.
+
+```bash
+kubectl apply -f charts/pod-cert-test.yaml
+
+kubectl exec -it pod/app -- /bin/sh
+
+$ cd /tls
+$tls ls
+$tls ca.crt, tls.crt, tls.key
+$tls exit
+
+kubectl get certificaterequests
+
+kubectl delete pod/app
+
+kubectl get certificaterequests
+
+<empty response>!!!
+
+```
+
+## Dynamically Issue Certificate from Istio
+
+### Create a new cluster-a vault pki role
+
+```bash
+vault write cluster-a-pki/roles/istio-ca \
+    allowed_domains=bank.net \
+    allow_any_name=true  \
+    enforce_hostnames=false \
+    require_cn=false \
+    allowed_uri_sans="spiffe://*" \
+    max_ttl=72h
+```
+create a corresponding issuer and token for this role.
+
+```bash
+# The following are pinned to the istio namespace only
+k apply -f charts/istio-ca-vault-token.yaml
+
+k apply -f charts/istio-ca-issuer.yaml
+
+```
+
+
+### Setup Cert-Manager Istio CSR
+
+```bash
+kubectl create ns istio-system
+```
+Pull values from https://github.com/cert-manager/istio-csr/blob/main/deploy/charts/istio-csr/values.yaml and update per `charts/istio-csr-values.yaml`
+
+```bash
+helm upgrade --install -n istio-system cert-manager-istio-csr -f charts/istio-csr-values.yaml jetstack/cert-manager-istio-csr
+
+```
+
+### Setup Istio
+
+Install Istio Base
+```bash
+helm upgrade --install istio-base -n istio-system istio/base
+```
+
+Pull Values from [https://github.com/istio/istio/blob/1.20.0/manifests/charts/istio-control/istio-discovery/values.yaml](https://github.com/istio/istio/blob/1.20.0/manifests/charts/istio-control/istio-discovery/values.yaml) and modify per `charts/istio-discovery-values.yaml`
+
+```bash
+helm upgrade --install istiod --values charts/istio-discovery-values.yaml -n istio-system istio/istiod
+```
+
+Verify Installation Succeeded
+
+```bash
+# should report ready=true
+kubectl get certificate istiod -n istio-system
+
+# view contents
+kubectl describe certificate istiod -n istio-system
+```
+
+TODO: Create Istio Gateway and Virtual Service over some pods that talk
+
+## Read a Vault Secret from Kubernetes Pod
+
+
+
+
+# Vault Kubernetes Authentication
+
+>
+> *This is a work in progress.*
+>
+
+### Create a Service Account for Cert-Manager to Connect to Vault
+
+```bash
+kubectl create serviceaccount cluster-a-issuer --namespace cert-manager
+```
+### Configure Authentication for Cert-Manager and Vault
+
+#### Create a token for Service Account
+
+```bash
+kubectl apply -f -<<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cluster-a-issuer-token
+  namespace: cert-manager
+  annotations:
+    kubernetes.io/service-account.name: cluster-a-issuer
+type: kubernetes.io/service-account-token
+EOF
+```
+#### Create a role binding for the Service Account
 
 ```bash
 kubectl apply -f -<<EOF
@@ -330,49 +445,20 @@ subjects:
   namespace: cert-manager
 EOF
 ```
+*Note*: I could not get this method to work; wouldn't connect error 403: permission denied...see alternative.
 
-### Retrieve our JWT Token
-
-```bash
-export ISSUER_SECRET_REF=$(kubectl get secrets -n cert-manager --output=json | jq -r '.items[].metadata | select(.name|endswith("issuer-token")).name')
-export CLUSTERA_SA_JWT_TOKEN=$(kubectl -n cert-manager get secret $ISSUER_SECRET_REF --output 'go-template={{ .data.token }}' | base64 --decode)
-echo $CLUSTERA_SA_JWT_TOKEN > clustera-jwt-token
-```
-
-### Get Cluster Certificate
-
-```bash
-CLUSTERA_KUBE_CA_CERT=$(kubectl config view --raw --minify --flatten --output='jsonpath={.clusters[].cluster.certificate-authority-data}' | base64 --decode)
-echo $CLUSTERA_KUBE_CA_CERT > clustera-ca.crt
-```
->
-> #TODO THE ABOVE CONFIGS are applied to KUBE AUTH for VAULT BELOW
->
 ### Create Vault Kubernetes Auth for Cluster A
-
+this is only valid is using vault kubernetes auth...work in progress.
 ```bash
 vault auth enable --path=cluster-a kubernetes
 ```
 
 ### Create the Vault Issuer for Certificate Manager
-
+This is only valid if you're using vault kubernetes auth
 ```bash
 kubectl apply -f charts/cluster-a-vault-issuer.yaml
 ```
 
->
-> *Note* The IP Address used in this script works because I changed the vault service on the vault cluster to a LoadBalancer (from ClusterIP) and started cloud-provider-kind so that it gets an external IP which I bound to in this script.
->
-> Likewise I need to adjust the Kubernetes Authentication for Vault to allow other clusters to communicate with Vault Cluster.
->
-> kubectl config use-context kind-cluster-a
-> kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}'
-> kubectl config view --raw --minify --flatten -o jsonpath='{.clusters[0].certificate-authority-data}' | base64 --decode
->
-> set this result as the kube-server for auth in vault.
->
-> This would need to be properly addressed in production.
->
 
 # Appendix
 
