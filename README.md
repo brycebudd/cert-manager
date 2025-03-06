@@ -62,6 +62,8 @@ kubectl exec -it vault-0 -- /bin/sh
 vault login $VAULT_DEV_ROOT_TOKEN_ID
 ```
 
+# Configure Vault PKI
+
 ## Enable the PKI secret engine for the Root CA
 
 ```bash
@@ -197,7 +199,7 @@ path "pki_cluster-b/sign/nonprod"    { capabilities = ["create", "update"] }
 path "pki_cluster-b/issue/nonprod"   { capabilities = ["create"] }
 EOF
 ```
-### Enable Kubernetes Auth
+# Enable Kubernetes Auth
 ```bash
 vault auth enable --path=cluster-a kubernetes
 
@@ -374,6 +376,8 @@ k apply -f charts/istio-ca-issuer.yaml
 
 ### Setup Cert-Manager Istio CSR
 
+Find inspiration [here](https://docs.keyfactor.com/ejbca/latest/tutorial-deploy-istio-service-mesh-in-a-multi-clus)
+
 ```bash
 kubectl create ns istio-system
 ```
@@ -447,6 +451,57 @@ kubectl logs $(kubectl get pod -n $NAMESPACE -o jsonpath="{.items...metadata.nam
 
 
 ## Read a Vault Secret from Kubernetes Pod
+
+### Vault Configuration
+Enable kubernetes authentication for cluster
+```bash
+vault auth enable --path=cluster-a kubernetes
+```
+
+Configure Kubernetes Authentication
+```bash
+vault write auth/cluster-a/config \
+  kubernetes_host="172.18.0.10:443" # my external kubernetes cluster ip
+```
+
+### Kubernetes Service Account
+
+```bash
+kubectl apply -f -<<EOF
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: appid
+EOF
+```
+
+### Create Vault Secrets for AppID
+
+```bash
+vault kv put secret/appid/config username="user123" password="something-great"
+```
+
+### Define the secret policy for AppID
+
+```bash
+vault policy write appid - <<EOF
+path "secret/data/appid/config" {
+  capabilities = ["read"]
+}
+EOF
+```
+
+### Define Kubernetes Authentication Role for AppId on Cluster A
+
+```bash
+vault write auth/cluster-a/role/appid \
+  bound_service_account_names=appid \
+  bound_service_account_namespaces=default \
+  policies=appid \
+  ttl=24h
+```
+
+https://www.hashicorp.com/en/blog/retrieve-hashicorp-vault-secrets-with-kubernetes-csi
 
 
 
@@ -546,4 +601,5 @@ kubectl apply -f charts/cluster-a-vault-issuer.yaml
 >
 > [Configuring Kubernetes for Secrets with Vault](https://developer.hashicorp.com/vault/tutorials/kubernetes/agent-kubernetes)
 >
+> [RedHat - Integrating Hashicorp Vault in OpenShift 4](https://redhat.com/en/blog/integrating-hashicorp-vault-in-openshift-4)
 >
