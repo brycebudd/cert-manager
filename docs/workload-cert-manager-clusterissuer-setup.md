@@ -1,4 +1,4 @@
-# Workload Cluster Setup
+# Workload Cert-Manager ClusterIssuer Setup
 
 # Create Cluster A
 
@@ -91,12 +91,12 @@ EOF
 ## Test Authentication with Vault
 
 ```bash
-vault write auth/kubernetes/login jwt="$SA_TOKEN_REVIEWER_JWT" role="cert-issuer-cluster-a"
+vault write auth/cluster-a/login jwt="$SA_TOKEN_REVIEWER_JWT" role="vault-issuer"
 ```
 
 # Create Cert-Manager ClusterIssuer
 
-## Option 1 - Using Token
+## Option 1 - Using Token (Not Preferred)
 ```bash
 kubectl apply -f -<<EOF
 apiVersion: cert-manager.io/v1
@@ -105,7 +105,7 @@ metadata:
   name: vault-issuer
 spec:
   vault:
-    server: "http://172.18.0.12:8200"
+    server: "http://external-vault.default:8200"
     path: "pki_cluster-a/sign/nonprod"
     auth:
       kubernetes:
@@ -119,13 +119,13 @@ EOF
 
 ### Error
 ```bash
-URL: POST http://172.18.0.12:8200/v1/auth/kubernetes/login
+URL: POST http://external-vault.default:8200/v1/auth/cluster-a/login
 Code: 403. Errors:
 
 * permission denied
 ```
 
-## Option 2 - Using Service Account
+## Option 2 - Using Service Account (Preferred)
 ```bash
 kubectl apply -f -<<EOF
 apiVersion: cert-manager.io/v1
@@ -134,7 +134,7 @@ metadata:
   name: vault-issuer
 spec:
   vault:
-    server: "http://172.18.0.12:8200"
+    server: "http://external-vault.default:8200"
     path: "pki_cluster-a/sign/nonprod"
     auth:
       kubernetes:
@@ -142,15 +142,13 @@ spec:
         role: vault-issuer
         serviceAccountRef:
           name: vault-auth-sa
-          audiences:
-          - https://kubernetes.default.svc.cluster.local
 EOF
 ```
 
 ### Error
 
 ```bash
-URL: POST http://172.18.0.12:8200/v1/auth/kubernetes/login
+URL: POST http://external-vault.default:8200/v1/auth/cluster-a/login
 Code: 403. Errors:
 
 * permission denied
@@ -178,7 +176,7 @@ metadata:
   name: vault-issuer-rolebinding
 subjects:
   - kind: ServiceAccount
-    name: vault-auth-sa
+    name: cert-manager
     namespace: cert-manager
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -187,4 +185,23 @@ roleRef:
 EOF
 ```
 
-* **Note** This did not work and shouldn't matter because the token was created before...I shouldn't need permission to create it. It may be useful for shortlived token...not my use case.
+#### Notes
+I believe both of these permissions errors are primarily due to using an incorrect endpoint for the tokenreviewer KUBE_HOST of the workload cluster when configuring vault authentication. 
+
+**Wrong Config**
+```bash
+vault write auth/cluster-a/config \
+    token_reviewer_jwt="$SA_TOKEN_REVIEWER_JWT" \
+    kubernetes_host="https://$SA_HOST:443" \ # This was pointing to the Kubernetes LoadBalancer External IP which is not valid dnsName for this ca cert so it fails.
+    kubernetes_ca_cert="$SA_CA_CERT"
+```
+
+**Correct Config**
+```bash
+vault write auth/cluster-a/config \
+    token_reviewer_jwt="$SA_TOKEN_REVIEWER_JWT" \ #THIS IS THE VAULT-AUTH-SECRET TOKEN
+    kubernetes_host="https://172.18.0.6:6443" \ #THIS IS THE ACTUAL API HOST 
+    kubernetes_ca_cert="$SA_CA_CERT" #THIS IS THE Kubernetes Server CA Cert
+```
+
+See [notes](./vault-kubernetes-authentication.md#option-1---confirmed) in Vault Kubernetes Authentication guide.

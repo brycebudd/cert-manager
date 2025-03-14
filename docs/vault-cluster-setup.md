@@ -75,4 +75,5 @@ vault login $VAULT_DEV_ROOT_TOKEN_ID
 
 # Next Steps
 
-[Vault PKI Configuration](./vault-pki-configuration.md)
+- [Vault Secret Configuration](./vault-secret-configuration.md)
+- [Vault PKI Configuration](./vault-pki-configuration.md)

@@ -15,6 +15,6 @@ metadata:
   name: external-vault
 subsets:
   - addresses:
-      - ip: '172.18.0.12'
+      - ip: '172.18.0.13'
     ports:
       - port: 8200
