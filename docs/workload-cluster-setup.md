@@ -88,8 +88,15 @@ subjects:
 EOF
 ```
 
+## Test Authentication with Vault
+
+```bash
+vault write auth/kubernetes/login jwt="$SA_TOKEN_REVIEWER_JWT" role="cert-issuer-cluster-a"
+```
+
 # Create Cert-Manager ClusterIssuer
 
+## Option 1 - Using Token
 ```bash
 kubectl apply -f -<<EOF
 apiVersion: cert-manager.io/v1
@@ -102,11 +109,82 @@ spec:
     path: "pki_cluster-a/sign/nonprod"
     auth:
       kubernetes:
-        mountPath: "/v1/auth/kubernetes"
-        role: "cert-issuer-cluster-a"
+        mountPath: "/v1/auth/cluster-a"
+        role: vault-issuer
         secretRef:
           name: vault-auth-secret
           key: token
 EOF
 ```
 
+### Error
+```bash
+URL: POST http://172.18.0.12:8200/v1/auth/kubernetes/login
+Code: 403. Errors:
+
+* permission denied
+```
+
+## Option 2 - Using Service Account
+```bash
+kubectl apply -f -<<EOF
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: vault-issuer
+spec:
+  vault:
+    server: "http://172.18.0.12:8200"
+    path: "pki_cluster-a/sign/nonprod"
+    auth:
+      kubernetes:
+        mountPath: "/v1/auth/cluster-a"
+        role: vault-issuer
+        serviceAccountRef:
+          name: vault-auth-sa
+          audiences:
+          - https://kubernetes.default.svc.cluster.local
+EOF
+```
+
+### Error
+
+```bash
+URL: POST http://172.18.0.12:8200/v1/auth/kubernetes/login
+Code: 403. Errors:
+
+* permission denied
+  Warning  ErrInitIssuer  25s (x2 over 25s)  cert-manager-clusterissuers  Error initializing issuer: while requesting a Vault token using the Kubernetes auth: while requesting a token for the service account /vault-auth-sa: serviceaccounts "vault-auth-sa" is forbidden: User "system:serviceaccount:cert-manager:cert-manager" cannot create resource "serviceaccounts/token" in API group "" in the namespace "cert-manager"
+```
+
+#### Resolution
+Create a role and rolebinding to allow the service account permission to create tokens.
+
+```bash
+kubectl apply -f -<<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: vault-issuer-role
+rules:
+  - apiGroups: ['']
+    resources: ['serviceaccounts/token']
+    resourceNames: ['vault-auth-sa']
+    verbs: ['create']
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: vault-issuer-rolebinding
+subjects:
+  - kind: ServiceAccount
+    name: vault-auth-sa
+    namespace: cert-manager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: vault-issuer-role
+EOF
+```
+
+* **Note** This did not work and shouldn't matter because the token was created before...I shouldn't need permission to create it. It may be useful for shortlived token...not my use case.
