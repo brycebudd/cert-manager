@@ -1,4 +1,7 @@
-# Workload Vault Secrets Setup
+# Use Case Vault Secret Injection
+
+# Vault Secret Injection Configuration
+This guide describes how to configure vault secrets engine for storing workload secrets and  certificates.
 
 # Create Cluster A
 
@@ -29,9 +32,9 @@ helm install vault hashicorp/vault \
     --set "injector.externalVaultAddr=http://external-vault:8200" \
     --set "injector.authPath=auth/cluster-a"
 ```
-Adding `injector.externalVaultAddr` will cause the helm chart to only install the Vault Agent Injector.
-
-`external-vault` is a Kubernetes Service the point to the external vault server ip address for convenience. This is documented in the [appendix](#external-vault-kubernetes-service).
+- `injector.externalVaultAddr` will cause the helm chart to only install the Vault Agent Injector.
+- `injector.authPath` will tell the injector to use our cluster-specific kubernetes authentication instead of the default auth/kubernetes.
+- `external-vault` is a Kubernetes Service the point to the external vault server ip address for convenience. This is documented in the [appendix](#external-vault-kubernetes-service).
 
 # Create Workload Service Account
 ```bash
@@ -91,6 +94,14 @@ $ cat /vault/secrets/certificates.txt
 # view credentials
 $ cat /vault/secrets/credentials.txt
 ```
+
+# Next Steps
+
+- [Use Agent Templates to extract data for Workloads](https://developer.hashicorp.com/vault/tutorials/kubernetes/kubernetes-sidecar#apply-a-template-to-the-injected-secrets)
+- [Container Storage Interface/Secrets Provider](https://developer.hashicorp.com/vault/tutorials/kubernetes/kubernetes-secret-store-driver) - Not endorsed by Openshift.
+- [Vault Secret Operator](https://developer.hashicorp.com/vault/docs/platform/k8s/vso) 
+- [Vault Secret Operator on OpenShift](https://developer.hashicorp.com/vault/docs/platform/k8s/vso/openshift)
+- [Vault Secret Operator Configuration](./vault-secret-operator-configuration.md)
 
 # Appendix
 

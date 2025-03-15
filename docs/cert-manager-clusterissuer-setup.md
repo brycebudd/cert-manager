@@ -43,14 +43,6 @@ This service account is the one defined in your vault kubernetes authenication s
 ```bash
 kubectl create serviceaccount vault-auth-sa --namespace cert-manager
 ```
-> **INFO**
->
-> The service account is being created in the default namespace because we are creating a ClusterIssuer.
->
-> You would need to ensure that the service account and it's corresponding secret are created in the same namespace as the Issuer if you're using a namespace scoped issuer to connect to Vault.
->
-
-
 
 # Create Token for Cert-Manager Service Account
 
@@ -95,6 +87,7 @@ vault write auth/cluster-a/login jwt="$SA_TOKEN_REVIEWER_JWT" role="vault-issuer
 ```
 
 # Create Cert-Manager ClusterIssuer
+The cluster issuer uses a kubernetes service to reference the external vault server, see [Appendix A](#external-vault-kubernetes-service).
 
 ## Option 1 - Using Token (Not Preferred)
 ```bash
@@ -105,7 +98,7 @@ metadata:
   name: vault-issuer
 spec:
   vault:
-    server: "http://external-vault.default:8200"
+    server: "http://external-vault:8200"
     path: "pki_cluster-a/sign/nonprod"
     auth:
       kubernetes:
@@ -119,7 +112,7 @@ EOF
 
 ### Error
 ```bash
-URL: POST http://external-vault.default:8200/v1/auth/cluster-a/login
+URL: POST http://external-vault:8200/v1/auth/cluster-a/login
 Code: 403. Errors:
 
 * permission denied
@@ -134,7 +127,7 @@ metadata:
   name: vault-issuer
 spec:
   vault:
-    server: "http://external-vault.default:8200"
+    server: "http://external-vault:8200"
     path: "pki_cluster-a/sign/nonprod"
     auth:
       kubernetes:
@@ -148,7 +141,7 @@ EOF
 ### Error
 
 ```bash
-URL: POST http://external-vault.default:8200/v1/auth/cluster-a/login
+URL: POST http://external-vault:8200/v1/auth/cluster-a/login
 Code: 403. Errors:
 
 * permission denied
@@ -205,3 +198,31 @@ vault write auth/cluster-a/config \
 ```
 
 See [notes](./vault-kubernetes-authentication.md#option-1---confirmed) in Vault Kubernetes Authentication guide.
+
+# Appendix
+
+## External Vault Kubernetes Service
+```bash
+kubectl apply -f - <<EOF
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: external-vault
+  namespace: cert-manager
+spec:
+  ports:
+  - protocol: TCP
+    port: 8200
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: external-vault
+subsets:
+  - addresses:
+      - ip: '172.18.0.13'
+    ports:
+      - port: 8200
+EOF
+```

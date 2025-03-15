@@ -18,10 +18,20 @@ There are several use cases where these powerful technologies can be combined to
 
 # Contents
 
-## Vault Cluster
+## Vault Cluster Setup
 1. [Vault Cluster Setup](./docs/vault-cluster-setup.md)
-1. [Vault PKI Configuration](./docs/vault-pki-configuration.md)
+    - [Vault PKI Configuration](./docs/vault-pki-configuration.md) *(required for cert-manager)*
+    - [Vault Secret Configuration](./docs/vault-secret-configuration.md) *(required for secrets management)*
 1. [Vault Kubernetes Authentication](./docs/vault-kubernetes-authentication.md)
 
-## Workload Cluster
-1. [Workload Cluster Setup](./docs/workload-cluster-setup.md)
+## Workload Cluster Setup
+
+[Cert-Manager Multi-Cluster Issuer with Vault](./docs/cert-manager-clusterissuer-setup.md)
+
+### Cert-Manager
+1. [Cert-Manager CSI Driver](./docs/use-cases/cert-manager-csi-driver.md) - **In-Progress**
+1. [Cert-Manager Istio CSR](./docs/use-cases/cert-manager-istio.md) - **In-Progress**
+
+### Secrets Management
+1. [Vault Secret Injection](./docs/use-cases/vault-secret-injection.md)
+1. [Vault Secret Operator](./docs/use-cases/vault-secret-operator.md) - **TODO**

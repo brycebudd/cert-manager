@@ -1,5 +1,4 @@
 # Vault Secret Configuration
-This guide describes how to configure vault secrets engine for storing workload secrets and  certificates.
 
 # Enable the Secret Engine for Workload
 The remainder of this guide assumes you are logged into an existing vault cluster via the Vault CLI. You can find instructions [here](./vault-cluster-setup.md#login-to-vault).
@@ -45,4 +44,5 @@ vault write auth/cluster-a/role/appid \
 
 # Next Steps
 
-- [Workload Setup for Vault Secret Agent Injection](./workload-vault-secret-setup.md)
+- [Use Vault Secret Injection](./use-cases/vault-secret-injection.md)
+- [Use Vault Secret Operator](./use-cases/vault-secret-operator.md)

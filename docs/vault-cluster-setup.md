@@ -49,7 +49,8 @@ helm install vault hashicorp/vault --set "server.dev.enabled=true"
 ```
 > **WARNING**
 >
-> *This is not suitable for a production deployment.*
+> *This is not suitable for a production deployment.*  
+> See [Appendix](#appendix) for standard setup.
 >
 
 ## Login to Vault
@@ -58,7 +59,7 @@ helm install vault hashicorp/vault --set "server.dev.enabled=true"
 
 ```bash
 #optional: may be needed based on your network setup (i.e. virtual machine)
-kubectl port-forward pod/vault-0 8200:8200 
+kubectl port-forward pod/vault-0 8200:8200 & #fork to background so kubectl config use-context doesn't effect running
 
 # in a separate terminal execute...
 export VAULT_ADDR='http://127.0.0.1:8200'
@@ -75,5 +76,43 @@ vault login $VAULT_DEV_ROOT_TOKEN_ID
 
 # Next Steps
 
-- [Vault Secret Configuration](./vault-secret-configuration.md)
 - [Vault PKI Configuration](./vault-pki-configuration.md)
+- [Vault Secret Configuration](./vault-secret-configuration.md)
+
+# Appendix
+
+## Vault Kubernetes Setup (Standard Mode)
+```bash
+helm repo add hashicorp https://helm.releases.hashicorp.com
+
+helm repo update
+
+helm install vault hashicorp/vault --set "injector.enabled=false"
+```
+
+Verify with `kubectl get pods` and `kubectl get service`. Note: default namespace assumed.
+
+### Unseal Vault
+```bash
+kubectl exec vault-0 -- vault operator init -key-shares=1 -key-threshold=1 \
+      -format=json > init-keys.json
+```
+
+### Set root token to ENV variable
+```bash
+VAULT_UNSEAL_KEY=$(cat init-keys.json | jq -r ".unseal_keys_b64[]")
+
+kubectl exec vault-0 -- vault operator unseal $VAULT_UNSEAL_KEY
+```
+
+### Set Root Token
+```bash
+cat init-keys.json | jq -r ".root_token"
+
+VAULT_ROOT_TOKEN=$(cat init-keys.json | jq -r ".root_token")
+
+kubectl exec vault-0 -- vault login $VAULT_ROOT_TOKEN
+```
+
+### TODO
+- Extend this guide with auto-unseal processes and procedures.
