@@ -116,24 +116,24 @@ Here you can define roles which will be used to issue cluster certificates. The 
 
 ```bash
 vault write pki_cluster-a/roles/nonprod \
-    allowed_domains="bank.net" \
+    allowed_domains=domain.net \
     allow_subdomains=true \
-    max_ttl="72h"
+    max_ttl=72h
 
 vault write pki_cluster-a/roles/prod \
-    allowed_domains="bank.com" \
+    allowed_domains=domain.com \
     allow_subdomains=true \
-    max_ttl="72h"    
+    max_ttl=72h    
 
 vault write pki_cluster-b/roles/nonprod \
-    allowed_domains="bank.net" \
+    allowed_domains=domain.net \
     allow_subdomains=true \
-    max_ttl="72h"
+    max_ttl=72h
 
 vault write pki_cluster-b/roles/prod \
-    allowed_domains="bank.com" \
+    allowed_domains=domain.com \
     allow_subdomains=true \
-    max_ttl="72h"    
+    max_ttl=72h    
 ```
 ## Setup Vault Policy for Cluster Workloads
 

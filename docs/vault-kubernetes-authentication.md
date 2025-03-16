@@ -59,7 +59,7 @@ The parameters used in the above command are populated based on the workload clu
 ```bash
 vault write auth/cluster-a/role/vault-issuer \
     bound_service_account_names=vault-auth-sa \
-    bound_service_account_namespaces=cert-manager \
+    bound_service_account_namespaces=* \
     policies=pki_cluster-a \
     ttl=24h
 ```

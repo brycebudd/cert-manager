@@ -199,6 +199,26 @@ vault write auth/cluster-a/config \
 
 See [notes](./vault-kubernetes-authentication.md#option-1---confirmed) in Vault Kubernetes Authentication guide.
 
+# Issue Certificate using Cluster Issuer
+
+```bash
+kubectl apply -f - <<EOF
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: app-cluster-a-domain-net
+  namespace: default
+spec:
+  secretName: app-cluster-a-domain-net-secret
+  issuerRef:
+    name: vault-issuer
+    kind: ClusterIssuer
+  commonName: app.domain.net 
+  dnsNames:
+  - app.cluster-a.domain.net
+EOF
+```
+
 # Appendix
 
 ## External Vault Kubernetes Service

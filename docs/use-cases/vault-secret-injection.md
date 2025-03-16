@@ -62,9 +62,9 @@ kubectl apply -f - <<EOF
 apiVersion: v1
 kind: Pod
 metadata:
-  name: appid-component
+  name: secret-injection-app
   labels:
-    app: appid-component
+    app: secret-injection-app
   annotations:
     vault.hashicorp.com/agent-inject: "true"
     vault.hashicorp.com/role: "appid"
@@ -86,7 +86,7 @@ If you run `kubectl get pods -n default` you should see appid-component pod with
 ## Verify Vault Secrets appear in Pod
 ```bash
 # access the application
-kubectl exec -it pod/appid-component -c app -n default -- /bin/sh
+kubectl exec -it pod/secret-injection-app -c app -n default -- /bin/sh
 
 # view certificates
 $ cat /vault/secrets/certificates.txt

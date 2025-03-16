@@ -29,7 +29,7 @@ There are several use cases where these powerful technologies can be combined to
 [Cert-Manager Multi-Cluster Issuer with Vault](./docs/cert-manager-clusterissuer-setup.md)
 
 ### Cert-Manager
-1. [Cert-Manager CSI Driver](./docs/use-cases/cert-manager-csi-driver.md) - **In-Progress**
+1. [Cert-Manager CSI Driver](./docs/use-cases/cert-manager-csi-driver.md)
 1. [Cert-Manager Istio CSR](./docs/use-cases/cert-manager-istio.md) - **In-Progress**
 
 ### Secrets Management

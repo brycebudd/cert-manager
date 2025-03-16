@@ -173,14 +173,14 @@ vault write pki_cluster-b/intermediate/set-signed \
 
 ```bash
 vault write pki_cluster-a/roles/nonprod \
-    allowed_domains="bank.net" \
+    allowed_domains=domain.net \
     allow_subdomains=true \
-    max_ttl="72h"
+    max_ttl=72h
 
 vault write pki_cluster-b/roles/nonprod \
-    allowed_domains="bank.net" \
+    allowed_domains=domain.net \
     allow_subdomains=true \
-    max_ttl="72h"
+    max_ttl=72h
 ```
 ### Setup Vault Policy for Cluster Workloads
 
@@ -315,40 +315,6 @@ Now that we have our Vault Issuer in place we can use cert-manager to issue cert
 > cert-manager will store certificates it issues as a kubernetes secret by default.
 >
 
-## Cert-Manager CSI-Driver
-
-### Installation
-
-```bash
-helm repo add jetstack https://charts.jetstack.io --force-update
-helm upgrade cert-manager-csi-driver jetstack/cert-manager-csi-driver \
-  --install \
-  --namespace cert-manager \
-  --wait
-```
-
-### Usage
-Add a cert-manager enabled volume to your pod. This example will use our newly minted vault issuer.
-
-```bash
-kubectl apply -f charts/pod-cert-test.yaml
-
-kubectl exec -it pod/app -- /bin/sh
-
-$ cd /tls
-$tls ls
-$tls ca.crt, tls.crt, tls.key
-$tls exit
-
-kubectl get certificaterequests
-
-kubectl delete pod/app
-
-kubectl get certificaterequests
-
-<empty response>!!!
-
-```
 
 ## Dynamically Issue Certificate from Istio
 
@@ -356,7 +322,7 @@ kubectl get certificaterequests
 
 ```bash
 vault write pki_cluster-a/roles/istio-ca \
-    allowed_domains=bank.net \
+    allowed_domains=domain.net \
     allow_any_name=true  \
     enforce_hostnames=false \
     require_cn=false \
