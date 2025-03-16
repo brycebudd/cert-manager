@@ -1,0 +1,17 @@
+defaultVaultConnection:
+  enabled: true
+  address: "http://external-vault.default:8200"
+  skipTLSVerify: true
+controller:
+  manager:
+    clientCache:
+      persistenceModel: direct-encrypted
+      storageEncryption:
+        enabled: true
+        mount: cluster-a
+        keyName: vso-client-cache
+        transitMount: cluster-a-transit
+        kubernetes:
+          role: auth-role-operator
+          serviceAccount: vault-secrets-operator-controller-manager
+          tokenAudiences: ["vault"]

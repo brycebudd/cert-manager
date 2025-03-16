@@ -89,6 +89,10 @@ helm repo update
 
 helm install vault hashicorp/vault --set "injector.enabled=false"
 ```
+> **INFO**  
+> Alternatively pass in this [values](https://github.com/hashicorp-education/learn-vault-secrets-operator/blob/main/vault/vault-values.yaml) file.  
+> 
+> `helm install vault hashicorp/vault --values vault-values.yaml`  
 
 Verify with `kubectl get pods` and `kubectl get service`. Note: default namespace assumed.
 

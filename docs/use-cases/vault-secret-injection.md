@@ -99,9 +99,7 @@ $ cat /vault/secrets/credentials.txt
 
 - [Use Agent Templates to extract data for Workloads](https://developer.hashicorp.com/vault/tutorials/kubernetes/kubernetes-sidecar#apply-a-template-to-the-injected-secrets)
 - [Container Storage Interface/Secrets Provider](https://developer.hashicorp.com/vault/tutorials/kubernetes/kubernetes-secret-store-driver) - Not endorsed by Openshift.
-- [Vault Secret Operator](https://developer.hashicorp.com/vault/docs/platform/k8s/vso) 
-- [Vault Secret Operator on OpenShift](https://developer.hashicorp.com/vault/docs/platform/k8s/vso/openshift)
-- [Vault Secret Operator Configuration](./vault-secret-operator-configuration.md)
+- [Vault Secret Operator Configuration](./vault-secret-operator.md)
 
 # Appendix
 
