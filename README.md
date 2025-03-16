@@ -30,8 +30,8 @@ There are several use cases where these powerful technologies can be combined to
 
 ### Cert-Manager
 1. [Cert-Manager CSI Driver](./docs/use-cases/cert-manager-csi-driver.md)
-1. [Cert-Manager Istio CSR](./docs/use-cases/cert-manager-istio.md) - **In-Progress**
+1. [Cert-Manager Istio CSR](./docs/use-cases/cert-manager-istio.md) - **TODO**
 
 ### Secrets Management
 1. [Vault Secret Injection](./docs/use-cases/vault-secret-injection.md)
-1. [Vault Secret Operator](./docs/use-cases/vault-secret-operator.md) - **TODO**
+1. [Vault Secret Operator](./docs/use-cases/vault-secret-operator.md) - **In-Progress**
