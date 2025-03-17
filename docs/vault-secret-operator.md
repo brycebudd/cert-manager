@@ -170,7 +170,7 @@ spec:
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultStaticSecret
 metadata:
-  name: app-env-credentials-vault-kv
+  name: app-env-credential
   namespace: default
 spec:
   type: kv-v2
