@@ -33,5 +33,5 @@ There are several use cases where these powerful technologies can be combined to
 1. [Cert-Manager Istio CSR](./docs/use-cases/cert-manager-istio.md) - **TODO**
 
 ### Secrets Management
-1. [Vault Secret Injection](./docs/use-cases/vault-secret-injection.md)
 1. [Vault Secret Operator](./docs/use-cases/vault-secret-operator.md) - **In-Progress**
+1. [Vault Secret Injection](./docs/use-cases/vault-secret-injection.md) - **Prefer VSO**

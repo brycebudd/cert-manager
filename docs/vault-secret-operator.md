@@ -1,9 +1,18 @@
 # Vault Secret Operator Setup
 This guide extends the previous setup with Vault Secrets Operator. It presumes the following previous setup guides have been completed. 
 
-1. [Vault Cluster Setup](../vault-cluster-setup.md)
-1. [Vault Secret Configuration](../vault-secret-configuration.md)
-1. [Vault Kubernetes Authentication](../vault-kubernetes-authentication.md)
+1. [Vault Cluster Setup](./vault-cluster-setup.md)
+1. [Vault Secret Configuration](./vault-secret-configuration.md)
+1. [Vault Kubernetes Authentication](./vault-kubernetes-authentication.md)
+
+# TODO
+- Document vault kubernetes authentication as it's required from the workload perspective
+  - which service accounts to configure at the vault service operator
+    - transit service
+  - which service accounts to configure for cluster-level services
+    - pki services
+  - which service accounts to configure for namespace-level services
+    - secrets
 
 # Configure Vault Transit Secrets
 TODO: Explain why needed
@@ -207,6 +216,33 @@ TODO
 
 # Create PKI
 
+Created a new vault auth role for Vault Service Operator using existing policies to allow VSO to create domain.net certificates
+
+?? Not sure about this
+
+```bash
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: default-token-secret
+  namespace: default
+  annotations:
+    kubernetes.io/service-account.name: default
+type: kubernetes.io/service-account-token
+EOF
+```
+
+?? Not sure about this
+```bash
+vault write auth/cluster-a/role/vso-issuer \
+    bound_service_account_names=default \
+    bound_service_account_namespaces=* \
+    policies=pki_cluster-a \
+    audience=vault \
+    ttl=24h   
+```
+
 ```bash
 kubectl apply -f - <<EOF
 ---
@@ -234,7 +270,7 @@ spec:
   vaultAuthGlobalRef:
     name: vault-auth-global
   kubernetes:
-    role: vault-issuer
+    role: vso-issuer
 ---
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultPKISecret
