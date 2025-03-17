@@ -206,11 +206,59 @@ See [appendix](#nginx-with-vault-static-secrets) for how to configure nginx to u
 TODO
 
 # Create PKI
-TODO?
+
+```bash
+kubectl apply -f - <<EOF
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuthGlobal
+metadata:
+  name: vault-auth-global
+  namespace: default
+spec:
+  defaultAuthMethod: kubernetes
+  kubernetes:
+    audiences:
+    - vault
+    mount: cluster-a
+    role: auth-role
+    serviceAccount: default
+    tokenExpirationSeconds: 600
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: vault-auth
+  namespace: default
+spec:
+  vaultAuthGlobalRef:
+    name: vault-auth-global
+  kubernetes:
+    role: vault-issuer
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultPKISecret
+metadata:
+  name: workload-domain-net-pki
+  namespace: default
+spec:
+  vaultAuthRef: vault-auth
+  mount: pki_cluster-a
+  role: nonprod
+  commonName: workload.domain.net
+  format: pem
+  expiryOffset: 1s
+  ttl: 60s
+  destination:
+    create: true
+    name: workload-tls
+EOF
+```
 
 # Appendix
 
 ## Resources
+- [Vault Secret Operator - GitHub](https://github.com/ricoberger/vault-secrets-operator/blob/main/README.md)
 - [Vault Secret Operator Tutorial](https://developer.hashicorp.com/vault/tutorials/kubernetes/vault-secrets-operator)
   - [Tutorial Source Code](https://github.com/hashicorp-education/learn-vault-secrets-operator)
 - [Vault Secrets Operator Tutorial - Medium](https://medium.com/@yurysavenko/using-vault-secrets-operator-in-kubernetes-afba5ccf44f1)
