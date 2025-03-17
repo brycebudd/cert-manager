@@ -136,7 +136,7 @@ kubectl apply -f - <<EOF
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultStaticSecret
 metadata:
-  name: vault-kv-app-env
+  name: app-env-certs-vault-kv
   namespace: default
 spec:
   type: kv-v2
@@ -157,16 +157,42 @@ spec:
 
   # Name of the CRD to authenticate to Vault
   vaultAuthRef: app-env-auth
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: app-env-credentials-vault-kv
+  namespace: default
+spec:
+  type: kv-v2
+
+  # mount path
+  mount: appid
+
+  # path of the secret
+  path: component/credentials
+
+  # dest k8s secret
+  destination:
+    name: app-env-credentials
+    create: true
+
+  # static secret refresh interval
+  refreshAfter: 30s
+
+  # Name of the CRD to authenticate to Vault
+  vaultAuthRef: app-env-auth
 EOF
-  ```
+```
 
 ### Verify Secret Pulled
 ```bash
 kubectl get secrets/app-env-tls -o yaml
+kubectl get secrets/app-env-credentials -o jsonpath='{.data.password}' | base64 -d
 ```
 Delete vault static secret and verify kubernetes secret destroyed.
 ```bash
-kubectl delete vaultstaticsecret vault-kv-app-env
+kubectl delete vaultstaticsecret app-env-certs-vault-kv app-env-credentials-vault-kv
 
 # check
 kubectl get secrets/app-env-tls -o yaml
@@ -174,16 +200,126 @@ kubectl get secrets/app-env-tls -o yaml
 # YAY secrets "app-env-tls" not found
 ```
 
+See [appendix](#nginx-with-vault-static-secrets) for how to configure nginx to use vault static secrets as configured above.
+
 # Create Dynamic Secret
-explain
+TODO
 
-
-
+# Create PKI
+TODO?
 
 # Appendix
 
 ## Resources
 - [Vault Secret Operator Tutorial](https://developer.hashicorp.com/vault/tutorials/kubernetes/vault-secrets-operator)
   - [Tutorial Source Code](https://github.com/hashicorp-education/learn-vault-secrets-operator)
+- [Vault Secrets Operator Tutorial - Medium](https://medium.com/@yurysavenko/using-vault-secrets-operator-in-kubernetes-afba5ccf44f1)
 - [Vault Secret Operator](https://developer.hashicorp.com/vault/docs/platform/k8s/vso) 
 - [Vault Secret Operator on OpenShift](https://developer.hashicorp.com/vault/docs/platform/k8s/vso/openshift)
+
+## nginx with vault static secrets
+
+```bash
+kubectl apply -f - <<EOF
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: nginx-static-certs-vso
+  namespace: default
+spec:
+  type: kv-v2
+
+  # mount path
+  mount: appid
+
+  # path of the secret
+  path: component/certificates
+
+  # dest k8s secret
+  destination:
+    name: tls-secret
+    create: true
+
+  # static secret refresh interval
+  refreshAfter: 30s
+
+  # Name of the CRD to authenticate to Vault
+  vaultAuthRef: app-env-auth
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 443
+        volumeMounts:
+        - name: tls-secret
+          mountPath: /etc/nginx/ssl
+          readOnly: true
+        - name: config-volume
+          mountPath: /etc/nginx/conf.d
+      volumes:
+      - name: tls-secret
+        secret:
+          secretName: tls-secret
+      - name: config-volume
+        configMap:
+          name: nginx-config          
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-service
+spec:
+  type: LoadBalancer # or NodePort, ClusterIP, depending on your needs
+  selector:
+    app: nginx
+  ports:
+  - protocol: TCP
+    port: 443
+    targetPort: 443
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+data:
+  default.conf: |
+    server {
+        listen 443 ssl;
+        server_name nginx.domain.net; # Replace with your domain
+
+        ssl_certificate /etc/nginx/ssl/tls.crt;
+        ssl_certificate_key /etc/nginx/ssl/tls.key;
+
+        location / {
+            return 200 'Hello, World!\n';
+        }
+    }
+EOF
+```
+
+### Verify nginx using TLS
+```bash
+# Get External IP Address of nginx loadbalancer service
+export NGINX_LB_IP=kubectl get service nginx-service -o jsonpath='{.status.loadBalancer.ingress[].ip}'
+
+# Add IP address to hosts file
+echo "$(kubectl get service nginx-service -o jsonpath='{.status.loadBalancer.ingress[].ip}')  nginx.domain.net" | sudo tee -a /etc/hosts
+
+# issue request and inspect certificate
+curl -kv https://nginx.domain.net
+```
