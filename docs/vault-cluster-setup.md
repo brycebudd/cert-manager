@@ -40,11 +40,7 @@ sudo apt update && sudo apt install vault
 ## Install Vault to Kubernetes
 
 ```bash
-helm repo add hashicorp https://helm.releases.hashicorp.com
-
-helm repo update
-
-helm install vault hashicorp/vault --set "server.dev.enabled=true"
+make CLUSTER_NAME=vault install-vault-cluster
 
 ```
 > **WARNING**

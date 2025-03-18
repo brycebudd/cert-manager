@@ -100,7 +100,7 @@ EOF
 
 # Install Vault Secrets Operator
 ```bash
-helm install vault-secrets-operator hashicorp/vault-secrets-operator -n vault-secrets-operator-system --create-namespace --values vault-operator-values.yaml
+make install-vault-secrets-operator
 ```
 
 # Create a Static Secret

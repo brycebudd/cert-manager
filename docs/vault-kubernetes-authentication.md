@@ -25,7 +25,7 @@ export SA_HOST=$(kubectl get svc/kubernetes -o jsonpath='{.status.loadBalancer.i
 ```bash
 vault write auth/cluster-a/config \
     token_reviewer_jwt="$SA_TOKEN_REVIEWER_JWT" \
-    kubernetes_host="https://172.18.0.6:6443" \
+    kubernetes_host="https://172.18.0.10:6443" \
     kubernetes_ca_cert="$SA_CA_CERT"
 ```
 ## Option 2
