@@ -41,6 +41,7 @@ sudo apt update && sudo apt install vault
 
 ```bash
 make CLUSTER_NAME=vault install-vault-cluster
+make CLUSTER_NAME=vault expose-vault-cluster #optional
 
 ```
 > **WARNING**
@@ -55,7 +56,7 @@ make CLUSTER_NAME=vault install-vault-cluster
 
 ```bash
 #optional: may be needed based on your network setup (i.e. virtual machine)
-kubectl port-forward pod/vault-0 8200:8200 & #fork to background so kubectl config use-context doesn't effect running
+kubectl --context kind-vault port-forward pod/vault-0 8200:8200 & #fork to background 
 
 # in a separate terminal execute...
 export VAULT_ADDR='http://127.0.0.1:8200'
