@@ -74,7 +74,14 @@ install-vault-cluster: prep-vault-install
 	@helm install vault hashicorp/vault -n vault --create-namespace --values vault-values.yaml
 	@kubectl get pods -n vault
 
+expose-vault-cluster:
+	@kubectl --context=kind-${CLUSTER_NAME} patch svc vault -n vault --type=json -p '[{"op":"replace","path":"/spec/type","value":"LoadBalancer"}]'
+
+expose-cluster-a:
+	@kubectl --context=kind-${CLUSTER_NAME} patch svc kubernetes -n default --type=json -p '[{"op":"replace","path":"/spec/type","value":"LoadBalancer"}]'
+
 uninstall-vault:
+	@kubectl config use-context kind-${CLUSTER_NAME}
 	@helm uninstall vault -n vault
 	@kubectl delete ns vault
 	@sleep 10	
@@ -90,45 +97,45 @@ health-vault:
 	@kubectl exec -n vault -ti vault-0 -- wget -qO - http://localhost:8200/v1/sys/health	
 
 vars-vault-cli:
-	@echo "export VAULT_ADDR=http://127.0.0.1:8200"
-	@echo "export VAULT_TOKEN=root"	
+	@echo "export VAULT_ADDR='http://127.0.0.1:8200'"
+	@echo "export VAULT_TOKEN='root'"	
 
 install-vault-secrets-operator:
 	@helm install vault-secrets-operator hashicorp/vault-secrets-operator \
 		-n vault-secrets-operator-system \
 		--create-namespace \
-		--values vault-operator-values.yaml \
+		--values vault-operator-values.yaml
 	@sleep 10
 	@kubectl wait --for=jsonpath='{.status.phase}'=Running pod \
 		--all --namespace vault-secrets-operator-system --timeout=1m
 	@kubectl wait --for=jsonpath='{.status.phase}'=Running pod --all --namespace vault-secrets-operator-system --timeout=1m
 	@sleep 10
 
-uninstall-vso:
+uninstall-vault-secrets-operator:
 	@helm uninstall vault-secrets-operator -n vault-secrets-operator-system
 
 logs-vso:
 	@kubectl logs -n vault-secrets-operator-system -l app.kubernetes.io/name=vault-secrets-operator -f	
 
-config-vault:
-	@vault auth enable -path cluster-a kubernetes
-	@vault write auth/cluster-a/config \
+# config-vault:
+#	@vault auth enable -path cluster-a kubernetes
+#	@vault write auth/cluster-a/config \
 	    token_reviewer_jwt="" \
-		kubernetes_host="http://172.18.0.10:6443" \
+		kubernetes_host="http://172.18.0.12:6443" \
 		kubernetes_cacert=""
-	@vault secrets enable -path=appid kv-v2
-	@vault policy write appid-kv-ro - <<EOF
-        path "appid/*" {
-            capabilities = ["read"]
-        }
-        EOF
-	@vault write auth/cluster-a/role/appid \
+#	@vault secrets enable -path=appid kv-v2
+#	@vault policy write appid-kv-ro - <<EOF
+#       path "appid/*" {
+#            capabilities = ["read"]
+#        }
+#        EOF
+#	@vault write auth/cluster-a/role/appid \
    		bound_service_account_names=appid-sa \
    		bound_service_account_namespaces=default \
    		policies=appid-kv-ro \
    		audience=vault \
    		token_period=2m
-	@vault kv put appid/component/credentials/config username="some.user" password="some.password"	
+#	@vault kv put appid/component/credentials/config username="some.user" password="some.password"	
 
 events:
 	@kubectl get events --all-namespaces --sort-by='.metadata.creationTimestamp' -w	
