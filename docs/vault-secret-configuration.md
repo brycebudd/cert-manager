@@ -19,6 +19,7 @@ vault kv put appid/component/certificates \
 ## Other Secrets
 ```bash
 vault kv put appid/component/credentials \
+  username="some.user" \
   password="s3cr3tP@ssw0rd"
 ```
 
