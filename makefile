@@ -87,14 +87,13 @@ uninstall-vault:
 	@sleep 10	
 
 status-vault:
-	@kubectl exec -n vault -ti vault-0 -- vault status
+	@kubectl --context kind-${CLUSTER_NAME} exec -n vault -ti vault-0 -- vault status
 
 logs-vault:
-	@kubectl config use-context kind-${CLUSTER_NAME}
-	@kubectl logs -n default sts/vault -f
+	@kubectl --context kind-${CLUSTER_NAME} logs -n vault sts/vault -f
 
 health-vault:
-	@kubectl exec -n vault -ti vault-0 -- wget -qO - http://localhost:8200/v1/sys/health	
+	@kubectl --context kind-${CLUSTER_NAME} exec -n vault -ti vault-0 -- wget -qO - http://localhost:8200/v1/sys/health	
 
 vars-vault-cli:
 	@echo "export VAULT_ADDR='http://127.0.0.1:8200'"
@@ -139,3 +138,9 @@ logs-vso:
 
 events:
 	@kubectl get events --all-namespaces --sort-by='.metadata.creationTimestamp' -w	
+
+show-jwt:
+	@echo "headers\n\n"
+	@kucctl get secret app-default-token -n app-dev -o jsonpath='{.data.token}' | base64 -d | cut -d '.' -f1 | base64 -d 2>/dev/null
+	@echo "\npayload\n\n"
+	@kucctl get secret app-default-token -n app-dev -o jsonpath='{.data.token}' | base64 -d | cut -d '.' -f2 | base64 -d 2>/dev/null
