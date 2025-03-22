@@ -121,7 +121,7 @@ vault write auth/cluster-a/role/vso-auth \
 
 ```bash
 export SA_HOST="https://172.18.0.12:6443"
-export SA_CA_CERT=$(kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}' | base64 -d; echo)
+export SA_CA_CERT=$(kubectl config view --minify --raw -o jsonpath='{.clusters[].cluster.certificate-authority-data}' | base64 -d; echo)
 
 vault write auth/cluster-a/config \
     kubernetes_host="${SA_HOST}" \
