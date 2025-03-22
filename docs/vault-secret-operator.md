@@ -151,3 +151,10 @@ spec:
   vaultAuthRef: vault-auth
 EOF
 ````
+
+## Verify
+
+```bash
+kubectl get secret/app-dev-credential -n app-dev -o jsonpath='{.data.username}' | base64 -d
+kubectl get secret/app-dev-credential -n app-dev -o jsonpath='{.data.password}' | base64 -d
+```
