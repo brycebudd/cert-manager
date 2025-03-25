@@ -36,3 +36,6 @@ There are several use cases where these powerful technologies can be combined to
 1. [Vault Secret Operator](./docs/use-cases/vault-secret-operator.md) - **In-Progress**
   - https://screencast.apps.chrome/1ytEd8B0lrSg7UjJx49iu_NisxgRzD2Qu?createdTime=2025-03-17T17%3A14%3A21.173Z
 1. [Vault Secret Injection](./docs/use-cases/vault-secret-injection.md) - **Prefer VSO**
+
+# Resources
+- [Vault Auto Unseal](https://github.com/kelseyhightower/vault-init)
