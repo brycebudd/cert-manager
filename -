@@ -1,0 +1,4 @@
+template {
+  source = "agent/app_cert.tmpl"
+  destination = "/etc/ssl/app_cert.crt"
+}
