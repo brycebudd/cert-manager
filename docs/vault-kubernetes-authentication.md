@@ -25,14 +25,14 @@ export SA_HOST=$(kubectl get svc/kubernetes -o jsonpath='{.status.loadBalancer.i
 ```bash
 vault write auth/cluster-a/config \
     token_reviewer_jwt="$SA_TOKEN_REVIEWER_JWT" \
-    kubernetes_host="https://172.18.0.12:6443" \
+    kubernetes_host="https://$SA_HOST:6443" \
     kubernetes_ca_cert="$SA_CA_CERT"
 ```
 ## Option 2
 ```bash
 vault write auth/cluster-a/config \
     token_reviewer_jwt="$SA_TOKEN_REVIEWER_JWT" \
-    kubernetes_host="https://$SA_HOST:443" \
+    kubernetes_host="https://$SA_HOST:6443" \
     kubernetes_ca_cert="$SA_CA_CERT" \
     issuer="https://kubernetes.default.svc.cluster.local"
 ```
@@ -40,7 +40,7 @@ vault write auth/cluster-a/config \
 ## Option 3
 ```bash
 vault write auth/cluster-a/config \
-    kubernetes_host="https://$SA_HOST:443" \
+    kubernetes_host="https://$SA_HOST:6443" \
     kubernetes_ca_cert="$SA_CA_CERT" \
     disable_local_ca_jwt="true"
 ```
@@ -78,7 +78,7 @@ vault write auth/cluster-a/role/vault-secrets \
 |:---|:---|
 | **bound_service_account_names** | comma-delimited list of service accounts |
 | **bound_service_account_namespaces** | comma-delimited list of namespaces |
-| **audience** (optional) | vault://\<namespace\>\/\<issuer-name\> for issuer type<br>vault://\<cluster-issuer-name\> for cluster issuer |
+| **audience** (optional) | vault://\<namespace\>\/\<issuer-name\> for issuer type<br>vault://\<cluster-issuer-name\> for cluster issuer<br><br>`kubectl get --raw /.well-known/openid-configuration \| jq -r .issuer` |
 | **policies** | comma-delimited list of vault polices which apply |
 | **ttl** | token time to live |  
 

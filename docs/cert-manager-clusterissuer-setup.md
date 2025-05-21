@@ -98,7 +98,7 @@ metadata:
   name: vault-issuer
 spec:
   vault:
-    server: "http://external-vault:8200"
+    server: "http://external-vault.default:8200"
     path: "pki_cluster-a/sign/nonprod"
     auth:
       kubernetes:
@@ -127,14 +127,15 @@ metadata:
   name: vault-issuer
 spec:
   vault:
-    server: "http://external-vault:8200"
+    server: "http://external-vault.default:8200"
     path: "pki_cluster-a/sign/nonprod"
     auth:
       kubernetes:
         mountPath: "/v1/auth/cluster-a"
         role: vault-issuer
-        serviceAccountRef:
-          name: vault-auth-sa
+        secretRef:
+          name: vault-auth-secret
+          key: token
 EOF
 ```
 
@@ -193,8 +194,9 @@ vault write auth/cluster-a/config \
 ```bash
 vault write auth/cluster-a/config \
     token_reviewer_jwt="$SA_TOKEN_REVIEWER_JWT" \ #THIS IS THE VAULT-AUTH-SECRET TOKEN
-    kubernetes_host="https://172.18.0.6:6443" \ #THIS IS THE ACTUAL API HOST 
-    kubernetes_ca_cert="$SA_CA_CERT" #THIS IS THE Kubernetes Server CA Cert
+    kubernetes_host="https://$SA_HOST" \ #THIS IS THE ACTUAL API HOST 
+    kubernetes_ca_cert="$SA_CA_CERT" \ #THIS IS THE Kubernetes Server CA Cert
+    disable_local_ca_jwt="true"
 ```
 
 See [notes](./vault-kubernetes-authentication.md#option-1---confirmed) in Vault Kubernetes Authentication guide.
@@ -241,7 +243,7 @@ metadata:
   name: external-vault
 subsets:
   - addresses:
-      - ip: '172.18.0.13'
+      - ip: '172.18.0.3'
     ports:
       - port: 8200
 EOF
