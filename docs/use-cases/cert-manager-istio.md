@@ -26,7 +26,7 @@ CTX_CLUSTER1="kind-cluster-a"
 CTX_CLUSTER2="kind-cluster-b"
 
 # Cluster 1
-helm --kube-context="${CTX_CLUSTER1}" install -n cert-manager cert-manager-istio-csr jetstack/cert-manager-istio-csr --set app.server.clusterID=cluster1 --set app.certmanager.issuer.name=vault-nonprod-issuer --set app.certmanager.preserveCertificateRequests=true --set app.logLevel=3
+helm --kube-context="${CTX_CLUSTER1}" install -n cert-manager cert-manager-istio-csr jetstack/cert-manager-istio-csr --set app.server.clusterID=cluster1 --set app.certmanager.issuer.name=vault-nonprod-issuer --set app.certmanager.preserveCertificateRequests=true --set app.logLevel=3helm --kube-context="${CTX_CLUSTER1}" install -n cert-manager cert-manager-istio-csr jetstack/cert-manager-istio-csr --set app.server.clusterID=cluster1 --set app.certmanager.issuer.name=vault-nonprod-issuer --set app.certmanager.preserveCertificateRequests=true --set app.logLevel=3helm --kube-context="${CTX_CLUSTER1}" install -n cert-manager cert-manager-istio-csr jetstack/cert-manager-istio-csr --set app.server.clusterID=cluster1 --set app.certmanager.issuer.name=vault-nonprod-issuer --set app.certmanager.preserveCertificateRequests=true --set app.logLevel=3
 
 # Cluster 2
 helm --kube-context="${CTX_CLUSTER2}" install -n cert-manager cert-manager-istio-csr jetstack/cert-manager-istio-csr --set app.server.clusterID=cluster2 --set app.certmanager.issuer.name=vault-nonprod-issuer --set app.certmanager.preserveCertificateRequests=true --set app.logLevel=3
