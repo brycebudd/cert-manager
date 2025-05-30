@@ -1,0 +1,22 @@
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  namespace: istio-system
+spec:
+  hub: gcr.io/istio-release
+  values:
+    global:
+      # Change certificate provider to cert-manager istio agent for istio agent
+      caAddress: cert-manager-istio-csr.cert-manager.svc:443
+      meshID: mesh1
+      multiCluster:
+        clusterName: cluster1
+      network: network1
+  components:
+    pilot:
+      k8s:
+        env:
+          # Disable istiod CA Sever functionality
+        - name: ENABLE_CA_SERVER
+          value: "false"
+                

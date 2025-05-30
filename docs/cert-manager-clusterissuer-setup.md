@@ -33,9 +33,104 @@ helm install \
   cert-manager jetstack/cert-manager \
   --namespace cert-manager \
   --create-namespace \
-  --version v1.17.0 \
   --set crds.enabled=true
 ```
+
+# Setup Vault Issuer Service Account for Istio
+
+```bash
+kubectl create namespace istio-system
+
+
+kubectl apply -f -<<EOF
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault-issuer
+  namespace: istio-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vault-issuer
+  namespace: istio-system
+  annotations:
+    kubernetes.io/service-account.name: vault-issuer
+type: kubernetes.io/service-account-token
+EOF
+```
+
+# Setup Istio Certificate Issuer
+
+## External Vault Kubernetes Service
+```bash
+kubectl apply -f - <<EOF
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: external-vault
+spec:
+  ports:
+  - protocol: TCP
+    port: 8200
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: external-vault
+subsets:
+  - addresses:
+      - ip: '172.18.0.5'
+    ports:
+      - port: 8200
+EOF
+```
+## Create Issuer
+
+```bash
+kubectl apply -f -<<EOF
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: vault-nonprod-issuer
+  namespace: istio-system
+spec:
+  vault:
+    server: "http://external-vault.default:8200"
+    path: "pki_cluster-a/sign/nonprod"
+    auth:
+      kubernetes:
+        mountPath: "/v1/auth/cluster-a"
+        role: cluster-a-ca
+        secretRef:
+          name: vault-issuer
+          key: token
+EOF
+
+kubectl apply -f -<<EOF
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: vault-nonprod-issuer
+  namespace: istio-system
+spec:
+  vault:
+    server: "http://external-vault.default:8200"
+    path: "pki_cluster-b/sign/nonprod"
+    auth:
+      kubernetes:
+        mountPath: "/v1/auth/cluster-b"
+        role: cluster-b-ca
+        secretRef:
+          name: vault-issuer
+          key: token
+EOF
+```
+
+---
+Everything below this line is suspect and needs to be re-evaluated.
 
 # Create Service Account for Cert-Manager
 This service account is the one defined in your vault kubernetes authenication setup step and will be used by cert-manager to authenticate with vault.
@@ -231,7 +326,6 @@ apiVersion: v1
 kind: Service
 metadata:
   name: external-vault
-  namespace: cert-manager
 spec:
   ports:
   - protocol: TCP
@@ -243,7 +337,7 @@ metadata:
   name: external-vault
 subsets:
   - addresses:
-      - ip: '172.18.0.3'
+      - ip: '172.18.0.5'
     ports:
       - port: 8200
 EOF

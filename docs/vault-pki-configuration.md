@@ -116,19 +116,54 @@ Here you can define roles which will be used to issue cluster certificates. The 
 
 ```bash
 vault write pki_cluster-a/roles/nonprod \
+allowed_domains=domain.net \
+allow_any_name=true \
+enforce_hostnames=false \
+require_cn=false \
+allowed_uri_sans="spiffe://*" \
+max_ttl=72h
+
+vault write pki_cluster-a/roles/nonprod \
     allowed_domains=domain.net \
     allow_subdomains=true \
     max_ttl=72h
+
+
+vault write pki_cluster-a/roles/prod \
+allowed_domains=domain.com \
+allow_any_name=true \
+enforce_hostnames=false \
+require_cn=false \
+allowed_uri_sans="spiffe://*" \
+max_ttl=72h
 
 vault write pki_cluster-a/roles/prod \
     allowed_domains=domain.com \
     allow_subdomains=true \
     max_ttl=72h    
 
+
+vault write pki_cluster-b/roles/nonprod \
+allowed_domains=domain.net \
+allow_any_name=true \
+enforce_hostnames=false \
+require_cn=false \
+allowed_uri_sans="spiffe://*" \
+max_ttl=72h
+
 vault write pki_cluster-b/roles/nonprod \
     allowed_domains=domain.net \
     allow_subdomains=true \
     max_ttl=72h
+
+
+vault write pki_cluster-b/roles/prod \
+allowed_domains=domain.com \
+allow_any_name=true \
+enforce_hostnames=false \
+require_cn=false \
+allowed_uri_sans="spiffe://*" \
+max_ttl=72h
 
 vault write pki_cluster-b/roles/prod \
     allowed_domains=domain.com \
@@ -141,13 +176,15 @@ Create a named policy that enables read access to the PKI secrets engine paths. 
 
 ```bash
 vault policy write pki_cluster-a - <<EOF
-path "pki_cluster-a*"                { capabilities = ["read", "list"] }
+path "pki*"                          { capabilities = ["read", "list"] }
+path "pki_cluster-a/roles/nonprod"   { capabilities = ["create", "update"] }
 path "pki_cluster-a/sign/nonprod"    { capabilities = ["create", "update"] }
 path "pki_cluster-a/issue/nonprod"   { capabilities = ["create"] }
 EOF
 
 vault policy write pki_cluster-b - <<EOF
-path "pki_cluster-b*"                { capabilities = ["read", "list"] }
+path "pki*"                          { capabilities = ["read", "list"] }
+path "pki_cluster-b/roles/nonprod"   { capabilities = ["create", "update"] }
 path "pki_cluster-b/sign/nonprod"    { capabilities = ["create", "update"] }
 path "pki_cluster-b/issue/nonprod"   { capabilities = ["create"] }
 EOF
