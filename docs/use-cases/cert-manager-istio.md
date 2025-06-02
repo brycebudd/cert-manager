@@ -13,8 +13,8 @@ using [cert-manager issuers](https://cert-manager.io/docs/concepts/issuer).
 which will be used to sign your certificate workloads. This guide assumes you have followed
 [cert-manager clusterissuer setup guide](../cert-manager-clusterissuer-setup.md).
 
-2. Next, install the `cert-manager-istio-csr` into the cluster, and configure `--set certificate.name=vault-istio-caX-issuer` to [use
-the Issuer](https://github.com/palimarium/istio-vault-ca/blob/master/cert-manager-setup.md#setting-up-vault-issuers) that we have
+2. Next, install the `cert-manager-istio-csr` into the cluster, and configure `--set app.certmanager.issuer.name=vault-nonprod-issuer` to [use
+the Issuer](../cert-manager-clusterissuer-setup.md) that we have
 previously created. The Issuer must reside in the same namespace as that configured by `-c, --certificate-namespace`, which
 is `istio-system` by default.
 
@@ -38,15 +38,15 @@ helm --kube-context="${CTX_CLUSTER2}" install -n cert-manager cert-manager-istio
 
 ```bash
 # Cluster1
-istioctl --context="${CTX_CLUSTER1}" install -f resources/istio-config-cluster-1.yaml
+istioctl --context="${CTX_CLUSTER1}" install -f resources/istio-config-cluster-1-1.yaml
 
 # Cluster2 
-istioctl --context="${CTX_CLUSTER2}" install -f resources/istio-config-cluster-2.yaml
+istioctl --context="${CTX_CLUSTER2}" install -f resources/istio-config-cluster-2-1.yaml
 ```
 
 Istio must be installed using the IstioOperator
 configuration changes within
-[`resources/istio-config-x.yaml`](resources/istio-config-cluster1-1.9.4.yaml). These changes are
+[`resources/istio-config-x.yaml`](../resources/istio-config-cluster-1-1.yaml). These changes are
 required in order for the CA Server to be disabled in istiod, ensure istio
 workloads request certificates from the cert-manager agent, and the istiod
 certificates and keys are mounted in from the Certificate created earlier.
@@ -66,25 +66,9 @@ spec:
       network: network1
 ```
 
----
-Everything below here is suspect.
+# Appendix
 
-***TODO: Complete Documentation!!***
-
-
-Create certificate
-```bash
-kubectl apply -f charts/example-dot-com-cert.yaml
-```
-
-### Mutual TLS
-Retrieve certificates from cert-manager for mtls client
-```bash
-kubectl get secret <secret_name> -n <namespace> -o jsonpath='{.data.tls\.crt}' | base64 -d > client.crt
-kubectl get secret <secret_name> -n <namespace> -o jsonpath='{.data.tls\.key}' | base64 -d > client.key
-```
-
-#### Call services
+## Calling services externally (mTLS)
 
 ```bash
 INGRESS_NAME='istio-ingressgateway'
@@ -98,10 +82,9 @@ curl -v -HHost:www.example.com --resolve "www.example.com:$SECURE_INGRESS_PORT:$
   --cacert ./certs/root/example.com.crt "https://www.example.com:$SECURE_INGRESS_PORT/status/418"
 ```
 
-# Appendix
-
-## Referencces
-Followed this tutorial https://developer.hashicorp.com/vault/tutorials/archive/kubernetes-cert-manager
+## References
+- https://github.com/brycebudd/istio-vault-ca/blob/master/README.md
+- Followed this tutorial https://developer.hashicorp.com/vault/tutorials/archive/kubernetes-cert-manager
 
 
 
