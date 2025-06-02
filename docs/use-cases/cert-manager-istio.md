@@ -1,6 +1,5 @@
 # Certificate Manager with Istio
 
-
 # istio-csr
 
 cert-manager-istio-csr is an agent which allows for [istio](https://istio.io) workload and control plane components to be secured using
@@ -65,6 +64,8 @@ spec:
         clusterName: cluster1
       network: network1
 ```
+# Demo
+[Cert-Manager with Istio Demo](https://screencast.apps.chrome/10PyZgJ1jWFgCUCUmBXeBimoxbAPg8JpT?createdTime=2025-05-30T23%3A18%3A40.729Z)
 
 # Appendix
 
