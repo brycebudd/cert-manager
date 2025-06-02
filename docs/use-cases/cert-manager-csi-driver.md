@@ -65,6 +65,9 @@ kubectl get certificaterequests
 
 ```
 
+# Demo
+[cert-manager csi driver](https://screencast.apps.chrome/101Eoinjv-Ntrj4di278zZPoa5LRX_16w?createdTime=2025-05-19T22%3A03%3A14.567Z)
+
 # Appendix
 
 ## Deploy nginx with CSI Driver Issued Certificate

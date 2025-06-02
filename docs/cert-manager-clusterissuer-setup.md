@@ -129,6 +129,9 @@ spec:
 EOF
 ```
 
+# Demo
+[Cert-Manager Vault Integration](https://screencast.apps.chrome/1-HpnXN5t23TPIQdzq7vIQ9AarKzTe4HP?createdTime=2025-05-19T21%3A56%3A36.994Z)
+
 ---
 Everything below this line is suspect and needs to be re-evaluated.
 
